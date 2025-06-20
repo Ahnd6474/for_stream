@@ -333,7 +333,7 @@ class EDA:
         st.pyplot(fig)
 
 # 실제 사용 예
-home = Home()
+home = Home(Page_Login, Page_Register, Page_FindPW)
 if 'data_loaded' not in st.session_state:
     st.session_state['data_loaded'] = False
 
