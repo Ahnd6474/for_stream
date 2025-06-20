@@ -277,15 +277,11 @@ class EDA:
         df = self.df[self.df['지역']!='전국'].copy()
         df['diff'] = df.groupby('지역')['인구'].diff()
         df_top = df.dropna().nlargest(100, 'diff')[['연도','region_en','diff']]
-
-        # Styling
-        styled = (df_top.assign(diff=lambda d: d['diff'].map("{:,.0f}".format))
-                   .style
-                   .background_gradient(
-                       subset=['diff'],
-                       cmap=['red','white','blue'],
-                       low=0, high=0
-                   ))
+        styled = (
+            df_top.style
+                .format({'diff': '{:,.0f}'})
+                .background_gradient(subset=['diff'],cmap='RdBu',axis=0)
+                )
         st.dataframe(styled, use_container_width=True)
 
     def change_analysis(self):
