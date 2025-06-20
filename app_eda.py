@@ -195,41 +195,117 @@ class Logout:
 # ---------------------
 # EDA 페이지 클래스
 # ---------------------
-class EDA:
-    
+
+# 한글 폰트 문제 방지
+plt.rcParams['font.family'] = 'sans-serif'
+
+# 지역명 한글→영어 매핑
+REGION_EN = {
+    '서울': 'Seoul', '부산': 'Busan', '대구': 'Daegu', '인천': 'Incheon',
+    '광주': 'Gwangju', '대전': 'Daejeon', '울산': 'Ulsan', '세종': 'Sejong',
+    '경기': 'Gyeonggi', '강원': 'Gangwon', '충북': 'Chungbuk', '충남': 'Chungnam',
+    '전북': 'Jeonbuk', '전남': 'Jeonnam', '경북': 'Gyeongbuk', '경남': 'Gyeongnam',
+    '제주': 'Jeju'
+}
+
 class EDA:
     def __init__(self):
         st.title("Population Trends EDA")
-        uploaded = st.file_uploader("population_trends.csv", type="csv")
+        uploaded = st.file_uploader("Upload population_trends.csv", type="csv")
         if not uploaded:
-            st.info("population_trends.csv 파일을 업로드 해주세요.")
-            return  # 파일이 없으면 이후 코드 실행 중단
+            st.info("Please upload population_trends.csv")
+            return
 
-        # CSV 로드
         df = pd.read_csv(uploaded)
+        # 숫자형 컬럼으로 변환
+        df[['연도', '인구', '출생아수(명)', '사망자수(명)']] = \
+            df[['연도', '인구', '출생아수(명)', '사망자수(명)']].apply(pd.to_numeric, errors='coerce')
 
-        # 세종시 행의 '-'를 0으로 치환
-        sejong_mask = df['지역'] == '세종'
-        df.loc[sejong_mask] = df.loc[sejong_mask].replace('-', 0)
+        self.df = df
 
-        # 한글 컬럼명을 실제로 사용
-        numeric_cols = ['인구', '출생아수(명)', '사망자수(명)']
-        df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+        self.plot_nationwide_trend()
+        self.plot_region_changes()
 
-        # 데이터프레임 정보 출력
-        st.subheader("데이터프레임 구조 (df.info())")
-        buf = io.StringIO()
-        df.info(buf=buf)
-        st.text(buf.getvalue())
+    def plot_nationwide_trend(self):
+        df_nat = self.df[self.df['지역'] == '전국'].sort_values('연도')
+        years = df_nat['연도']
+        pops = df_nat['인구']
 
-        # 요약 통계
-        st.subheader("데이터 요약 통계 (df.describe())")
-        st.dataframe(df[numeric_cols].describe())
+        # 최근 3년 자연증가량(출생-사망) 평균
+        recent = df_nat.tail(3)
+        avg_natural_inc = ((recent['출생아수(명)'] - recent['사망자수(명)']) / 1).mean()
 
-        # 상위 5개 미리보기
-        st.subheader("미리보기")
-        st.dataframe(df.head())
-        
+        last_year = int(years.max())
+        last_pop = float(pops.iloc[-1])
+        target_year = 2035
+        years_to_go = target_year - last_year
+        pred_pop = last_pop + avg_natural_inc * years_to_go
+
+        # plot
+        fig, ax = plt.subplots()
+        ax.plot(years, pops, marker='o', label='Observed')
+        ax.plot([last_year, target_year], [last_pop, pred_pop],
+                linestyle='--', marker='x', label='Projected to 2035')
+        ax.set_title("Yearly Total Population Trend")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Population")
+        ax.legend()
+        st.pyplot(fig)
+
+    def plot_region_changes(self):
+        df = self.df.copy()
+        # 최근 5년 데이터
+        max_year = df['연도'].max()
+        min_year = max_year - 5
+        df5 = df[(df['연도'] == min_year) | (df['연도'] == max_year)]
+        df5 = df5[df5['지역'] != '전국']
+
+        # 변화량 계산
+        df_pivot = df5.pivot(index='지역', columns='연도', values='인구')
+        df_pivot['change_amt'] = df_pivot[max_year] - df_pivot[min_year]
+        df_pivot['change_rate'] = (df_pivot['change_amt'] / df_pivot[min_year]) * 100
+
+        # 영어명 적용 및 정렬
+        df_pivot = df_pivot.reset_index()
+        df_pivot['region_en'] = df_pivot['지역'].map(REGION_EN)
+        df_amt = df_pivot.sort_values('change_amt', ascending=False)
+        df_rate = df_pivot.sort_values('change_rate', ascending=False)
+
+        # 단위: 천명
+        df_amt['change_amt_k'] = df_amt['change_amt'] / 1000
+
+        # 그래프 1: 절대 변화량
+        fig1, ax1 = plt.subplots(figsize=(8, 6))
+        sns.barplot(x='change_amt_k', y='region_en', data=df_amt, ax=ax1)
+        ax1.set_title("5-Year Population Change (Absolute)")
+        ax1.set_xlabel("Change (thousands)")
+        ax1.set_ylabel("")
+        # 값 표시
+        for p in ax1.patches:
+            ax1.text(p.get_width() + 0.1, p.get_y() + p.get_height()/2,
+                     f"{p.get_width():.1f}", va='center')
+        st.pyplot(fig1)
+
+        st.markdown(
+            "Above chart shows the top regions by absolute population change over the last 5 years. "
+            "Regions are sorted in descending order of their total population gain or loss."
+        )
+
+        # 그래프 2: 변화율
+        fig2, ax2 = plt.subplots(figsize=(8, 6))
+        sns.barplot(x='change_rate', y='region_en', data=df_rate, ax=ax2)
+        ax2.set_title("5-Year Population Change Rate (%)")
+        ax2.set_xlabel("Change Rate (%)")
+        ax2.set_ylabel("")
+        for p in ax2.patches:
+            ax2.text(p.get_width() + 0.5, p.get_y() + p.get_height()/2,
+                     f"{p.get_width():.1f}%", va='center')
+        st.pyplot(fig2)
+
+        st.markdown(
+            "Above chart shows the top regions by percentage change over the last 5 years. "
+            "This highlights which areas have experienced the fastest relative growth or decline."
+        )        
 
 # ---------------------
 # 페이지 객체 생성
