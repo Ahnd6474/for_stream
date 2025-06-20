@@ -348,7 +348,10 @@ Page_EDA      = st.Page(EDA,      title="EDA",     icon="📊", url_path="eda")
 
 #home = Home(Login, Register, FindPassword)
 
-
+if st.session_state.get("logged_in"):
+    pages = [Page_Home, Page_User, Page_Logout, Page_EDA]
+else:
+    pages = [Page_Home, Page_Login, Page_Register, Page_FindPW]
 
 
 selected_page = st.navigation(pages)
