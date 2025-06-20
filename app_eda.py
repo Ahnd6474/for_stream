@@ -347,12 +347,7 @@ Page_EDA      = st.Page(EDA,      title="EDA",     icon="📊", url_path="eda")
 # 실제 사용 예
 
 #home = Home(Login, Register, FindPassword)
-if 'data_loaded' not in st.session_state:
-    st.session_state['data_loaded'] = False
-    
-if st.session_state['data_loaded'] or st.button("Start EDA"):
-    st.session_state['data_loaded'] = True
-    eda = EDA()   
+
 
 if st.session_state.logged_in:
     pages = [Page_Home, Page_User, Page_Logout, Page_EDA]
@@ -361,3 +356,9 @@ else:
 
 selected_page = st.navigation(pages)
 selected_page.run()
+if 'data_loaded' not in st.session_state:
+    st.session_state['data_loaded'] = False
+    
+if st.session_state['data_loaded'] or st.button("Start EDA"):
+    st.session_state['data_loaded'] = True
+    eda = EDA()   
