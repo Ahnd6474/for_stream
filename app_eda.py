@@ -196,30 +196,38 @@ class Logout:
 # EDA 페이지 클래스
 # ---------------------
 class EDA:
+    
+class EDA:
     def __init__(self):
-        st.title("\ud83d\udcca Population Trends EDA")
-        uploaded = st.file_uploader("population_trends.csv \ud30c\uc77c \uc5c5\ub85c\ub4dc", type="csv")        if not uploaded:
+        st.title("Population Trends EDA")
+        uploaded = st.file_uploader("population_trends.csv", type="csv")
         if not uploaded:
-            st.info("population_trends.csv \ud30c\uc77c\uc744 \uc5c5\ub85c\ub4dc \ud574\uc8fc\uc138\uc694.")
+            st.info("population_trends.csv 파일을 업로드 해주세요.")
+            return  # 파일이 없으면 이후 코드 실행 중단
 
-
+        # CSV 로드
         df = pd.read_csv(uploaded)
 
-        sejong_mask = df['\uc9c0\uc5ed'] == '\uc138\uc885'
+        # 세종시 행의 '-'를 0으로 치환
+        sejong_mask = df['지역'] == '세종'
         df.loc[sejong_mask] = df.loc[sejong_mask].replace('-', 0)
 
-        numeric_cols = ['\uc778\uad6c', '\ucd9c\uc0dd\uc544\uc218(\uba85)', '\uc0ac\ub9dd\uc790\uc218(\uba85)']
+        # 한글 컬럼명을 실제로 사용
+        numeric_cols = ['인구', '출생아수(명)', '사망자수(명)']
         df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
 
-        st.subheader("\ub370\uc774\ud130\ud504\ub808\uc784 \uad6c\uc870 (df.info())")
+        # 데이터프레임 정보 출력
+        st.subheader("데이터프레임 구조 (df.info())")
         buf = io.StringIO()
         df.info(buf=buf)
         st.text(buf.getvalue())
 
-        st.subheader("\ub370\uc774\ud130 \uc694\uc57d \ud1b5\uacc4 (df.describe())")
+        # 요약 통계
+        st.subheader("데이터 요약 통계 (df.describe())")
         st.dataframe(df[numeric_cols].describe())
 
-        st.subheader("\ubbf8\ub9ac\ubcf4\uae30")
+        # 상위 5개 미리보기
+        st.subheader("미리보기")
         st.dataframe(df.head())
         
 
